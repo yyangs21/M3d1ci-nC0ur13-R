@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Análisis de Flujo Courier — Plano Interactivo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    min-height: 100vh;
+}
+.header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    padding: 14px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.header h1 { font-size: 20px; margin-bottom: 2px; font-weight: 600; }
+.header p { font-size: 12px; opacity: 0.9; }
+
+.container {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 14px;
+    padding: 14px;
+    max-width: 1800px;
+    margin: 0 auto;
+}
+
+.left-panel, .right-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.right-panel {
+    max-height: calc(100vh - 70px);
+    overflow-y: auto;
+}
+
+svg.plano {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: white;
+}
+
+.controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    align-items: center;
+}
+button {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+}
+button:hover { background: #e2e8f0; }
+button.primary { background: #3b82f6; color: white; border-color: #2563eb; }
+button.primary:hover { background: #2563eb; }
+button.active { background: #10b981; color: white; border-color: #059669; }
+
+.view-selector {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    padding: 3px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.view-btn {
+    flex: 1;
+    min-width: 110px;
+    background: transparent;
+    border: none;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #475569;
+}
+.view-btn.active { background: white; color: #1e3a8a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+h2 { font-size: 15px; margin-bottom: 10px; color: #0f172a; font-weight: 600; }
+h3 { font-size: 11px; margin-bottom: 6px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+
+.info-box {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 3px solid #3b82f6;
+}
+
+.metric { display: flex; justify-content: space-between; align-items: baseline; padding: 3px 0; font-size: 13px; }
+.metric-label { color: #64748b; }
+.metric-value { font-weight: 600; color: #0f172a; }
+.metric-value.big { font-size: 24px; color: #1e40af; display: block; margin: 6px 0; }
+
+.legend {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: #64748b;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1); }
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.kpi-card {
+    background: #f8fafc;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+}
+.kpi-card .v { font-size: 22px; font-weight: 700; color: #1e40af; line-height: 1; }
+.kpi-card .l { font-size: 10px; color: #64748b; text-transform: uppercase; margin-top: 4px; }
+
+.section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 14px 0 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pareto-row {
+    display: grid;
+    grid-template-columns: 50px 1fr 50px;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+    font-size: 11px;
+}
+.pareto-label { color: #64748b; text-align: right; font-weight: 500; }
+.pareto-bar-container {
+    background: #f1f5f9;
+    height: 18px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.pareto-bar { height: 100%; border-radius: 3px; transition: width 0.5s; }
+.pareto-value { font-weight: 600; font-size: 11px; }
+
+.findings { background: #f8fafc; border-radius: 8px; padding: 10px; margin-top: 10px; }
+.finding {
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.finding.critical { background: #fef2f2; border-left: 3px solid #ef4444; color: #7f1d1d; }
+.finding.warn { background: #fefce8; border-left: 3px solid #eab308; color: #713f12; }
+.finding.info { background: #eff6ff; border-left: 3px solid #3b82f6; color: #1e3a8a; }
+.finding b { display: block; margin-bottom: 2px; }
+
+.progress-track {
+    width: 100%;
+    height: 5px;
+    background: #f1f5f9;
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #3b82f6);
+    transition: width 0.3s;
+}
+
+.progress-info {
+    font-size: 11px;
+    color: #475569;
+    padding: 4px 10px;
+    background: #f1f5f9;
+    border-radius: 4px;
+    flex: 1;
+    min-width: 200px;
+}
+
+/* ===== SVG styles ===== */
+.wall { fill: none; stroke: #1e293b; stroke-width: 2.5; stroke-linejoin: miter; }
+.wall-thick { fill: none; stroke: #1e293b; stroke-width: 4; }
+.zone-fill { fill: #f8fafc; }
+.aforo-floor { fill: #fafaf9; }
+.dim-line { stroke: #94a3b8; stroke-width: 0.7; fill: none; }
+.dim-text { fill: #64748b; font-size: 10px; font-family: Arial, sans-serif; text-anchor: middle; }
+.area-label-bold { fill: #475569; font-size: 11px; font-weight: 700; font-family: Arial; text-anchor: middle; letter-spacing: 1px; }
+.label-small { fill: #64748b; font-size: 9px; font-family: Arial; text-anchor: middle; font-weight: 600; }
+
+/* Racks */
+.rack-shelf { fill: #cbd5e1; stroke: #64748b; stroke-width: 0.5; }
+.rack-shelf-aforo { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 0.5; }
+.rack-divider { stroke: #94a3b8; stroke-width: 0.5; }
+
+/* Moncargas */
+.forklift-body { fill: #fbbf24; stroke: #b45309; stroke-width: 1; }
+.forklift-fork { stroke: #57534e; stroke-width: 1.5; }
+.forklift-load { fill: #d97706; stroke: #92400e; stroke-width: 0.8; }
+
+/* RX Machine */
+.rx-body { fill: #475569; stroke: #1e293b; stroke-width: 1.5; }
+.rx-belt { fill: #fbbf24; stroke: #b45309; stroke-width: 1; }
+.rx-screen { fill: #0ea5e9; stroke: #0284c7; stroke-width: 1; }
+
+/* Plane */
+.plane-body { fill: #cbd5e1; stroke: #475569; stroke-width: 1.2; }
+.plane-detail { fill: #f1f5f9; stroke: #475569; stroke-width: 0.8; }
+.plane-window { fill: #1e40af; }
+
+/* Tarimas */
+.pallet { fill: #d97706; stroke: #92400e; stroke-width: 1; }
+.pallet-top { fill: #fbbf24; }
+.box-on-pallet { fill: #fde68a; stroke: #b45309; stroke-width: 0.5; }
+
+/* Persona/Iconos */
+.person-head { fill: #1e293b; }
+.person-body { fill: #1e293b; }
+
+/* Punto (círculo numerado) */
+.point-circle {
+    cursor: pointer;
+    transition: transform 0.2s, filter 0.2s;
+    transform-box: fill-box;
+    transform-origin: center;
+    stroke: white;
+    stroke-width: 2.5;
+}
+.point-circle:hover { transform: scale(1.18); }
+.point-circle.active { filter: drop-shadow(0 0 8px #fbbf24) drop-shadow(0 0 16px rgba(251,191,36,0.5)); }
+.point-label {
+    font-size: 14px;
+    font-weight: 700;
+    fill: white;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: central;
+    font-family: Arial;
+}
+.point-time {
+    font-size: 9px;
+    fill: #0f172a;
+    text-anchor: middle;
+    font-weight: 700;
+    pointer-events: none;
+    font-family: Arial;
+}
+.point-time-bg {
+    fill: white;
+    stroke: #cbd5e1;
+    stroke-width: 0.5;
+    rx: 3;
+}
+
+/* Path entre puntos */
+.flow-path {
+    fill: none;
+    stroke: #cbd5e1;
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    opacity: 0.6;
+}
+.flow-path.active {
+    stroke: #f59e0b;
+    stroke-dasharray: none;
+    stroke-width: 2;
+    opacity: 1;
+}
+
+/* Cargo animado */
+.cargo-pkg { transition: none; }
+
+.header-top { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
+.header-kpis { display: flex; gap: 8px; flex-wrap: wrap; }
+.hkpi {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+}
+.hkpi.green { background: rgba(16,185,129,0.3); border-color: rgba(16,185,129,0.5); }
+.hkpi.red { background: rgba(220,38,38,0.3); border-color: rgba(220,38,38,0.5); }
+.hkpi-v { font-size: 15px; font-weight: 700; color: white; }
+.hkpi-l { font-size: 10px; color: rgba(255,255,255,0.85); text-transform: uppercase; margin-top: 2px; }
+
+.transit-info {
+    background: #fef3c7;
+    border-left: 3px solid #f59e0b;
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #92400e;
+}
+.transit-info.hidden { display: none; }
+.transit-info b { display: block; margin-bottom: 2px; }
+
+.day-stats {
+    background: #f8fafc;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 8px;
+    display: none;
+}
+.day-stats.show { display: block; }
+.day-stats h4 { font-size: 12px; color: #1e3a8a; margin-bottom: 6px; font-weight: 700; }
+.day-stat-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; }
+.day-stat-row .l { color: #64748b; }
+.day-stat-row .v { font-weight: 600; color: #0f172a; }
+
+.dead-time-section {
+    background: #fef3c7;
+    border-radius: 6px;
+    padding: 10px;
+    margin-top: 10px;
+}
+.dead-time-row {
+    display: grid;
+    grid-template-columns: 1fr 60px;
+    padding: 3px 0;
+    font-size: 11px;
+    align-items: center;
+}
+.dead-time-row .l { color: #78350f; }
+.dead-time-row .v { font-weight: 700; color: #92400e; text-align: right; }
+.dead-time-total {
+    border-top: 1px solid #f59e0b;
+    margin-top: 6px;
+    padding-top: 6px;
+}
+
+.mesa-row {
+    display: flex;
+    grid-template-columns: 30px 1fr 50px;
+    font-size: 11px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f1f5f9;
+    align-items: center;
+}
+.mesa-num {
+    background: #1e3a8a;
+    color: white;
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 10px;
+}
+.mesa-info { padding-left: 6px; color: #475569; font-size: 10px; flex: 1; }
+.mesa-time { font-weight: 700; color: #dc2626; text-align: right; }
+
+
+.mesa-detail { font-size: 9px; color: #94a3b8; font-weight: 500; }
+.compare-panel {
+    background: white;
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.compare-table th {
+    background: #1e3a8a;
+    color: white;
+    padding: 8px 6px;
+    font-weight: 600;
+    text-align: center;
+}
+.compare-table td {
+    padding: 6px 6px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: center;
+}
+.compare-table tr.laats td { background: #fef3c7; }
+.compare-table tr.combex td { background: #dbeafe; }
+.compare-table tr.diff td { background: #f8fafc; font-weight: 600; }
+.compare-table .laats-label { color: #92400e; font-weight: 700; }
+.compare-table .combex-label { color: #1e3a8a; font-weight: 700; }
+.compare-table .dif-pos { color: #dc2626; font-weight: 700; }
+.compare-table .dif-neg { color: #059669; font-weight: 700; }
+.compare-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1e3a8a;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #3b82f6;
+}
+.compare-dia-block {
+    margin-bottom: 16px;
+}
+.compare-dia-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 6px;
+    padding: 6px 10px;
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+.mesas-comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    margin-top: 8px;
+}
+.mesas-comparison-table th {
+    background: #1e3a8a;
+    color: white;
+    padding: 6px 4px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 10px;
+}
+.mesas-comparison-table td {
+    padding: 4px 4px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: center;
+    font-size: 10px;
+}
+.mesas-comparison-table td.empresa-cell {
+    text-align: left;
+    color: #64748b;
+    font-size: 9px;
+}
+.bar-cell {
+    position: relative;
+    padding: 2px 4px !important;
+}
+.bar-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: rgba(59, 130, 246, 0.15);
+    z-index: 0;
+}
+.bar-text {
+    position: relative;
+    z-index: 1;
+    font-weight: 600;
+}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-top">
+        <div>
+            <h1>🛬 Análisis de Flujo Courier — Plano Interactivo</h1>
+            <p>04-06 mayo 2026 · COMBEXIM</p>
+        </div>
+        <div class="header-kpis">
+            <div class="hkpi"><span class="hkpi-v">4</span><span class="hkpi-l">Vuelos</span></div>
+            <div class="hkpi"><span class="hkpi-v">22</span><span class="hkpi-l">Couriers</span></div>
+            <div class="hkpi"><span class="hkpi-v">600</span><span class="hkpi-l">Bultos</span></div>
+            <div class="hkpi"><span class="hkpi-v">62.7K</span><span class="hkpi-l">Kilos</span></div>
+            <div class="hkpi"><span class="hkpi-v">52</span><span class="hkpi-l">Tarimas</span></div>
+            <div class="hkpi green"><span class="hkpi-v">3,094</span><span class="hkpi-l">Verde</span></div>
+            <div class="hkpi red"><span class="hkpi-v">3,755</span><span class="hkpi-l">Rojo</span></div>
+        </div>
+    </div>
+    <div class="header-second" style="display:flex; justify-content:flex-end; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap;">
+        <span style="color:rgba(255,255,255,0.85); font-size:11px; text-transform:uppercase; letter-spacing:1px; margin-right:4px;">⏱ Tiempo por selectivo:</span>
+        <div class="hkpi" style="background: rgba(59,130,246,0.3); border-color: rgba(59,130,246,0.5);">
+            <span class="hkpi-v">7s</span>
+            <span class="hkpi-l">P8 1er Esc.</span>
+        </div>
+        <div class="hkpi green">
+            <span class="hkpi-v">6s</span>
+            <span class="hkpi-l">P9 Verde</span>
+        </div>
+        <div class="hkpi red">
+            <span class="hkpi-v">32s</span>
+            <span class="hkpi-l">P9 Rojo</span>
+        </div>
+        <div class="hkpi" style="background: rgba(168,85,247,0.3); border-color: rgba(168,85,247,0.5);">
+            <span class="hkpi-v">52s</span>
+            <span class="hkpi-l">P9 Doc</span>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="left-panel">
+        <div class="view-selector">
+            <button class="view-btn active" data-view="avg">📊 Promedio general</button>
+            <button class="view-btn" data-view="verde">🟢 Solo VERDE</button>
+            <button class="view-btn" data-view="rojo">🔴 Solo ROJO</button>
+            <button class="view-btn" data-view="dia1">📅 Día 1 (04/05)</button>
+            <button class="view-btn" data-view="dia2">📅 Día 2 (06/05)</button>
+            <button class="view-btn" data-view="vuelo1">FEDEX</button>
+            <button class="view-btn" data-view="vuelo2">UPS 04</button>
+            <button class="view-btn" data-view="vuelo3">DHL</button>
+            <button class="view-btn" data-view="vuelo4">UPS 06</button>
+        </div>
+
+        <svg class="plano" viewBox="0 0 1200 780" xmlns="http://www.w3.org/2000/svg">
+
+            <!-- ============ AVIÓN Y ZONA DE PISTA (parte superior derecha) ============ -->
+            <g id="zona-avion" transform="translate(0,0)">
+                <!-- Etiqueta -->
+                <text x="900" y="20" fill="#475569" font-size="11" font-weight="700" font-family="Arial" text-anchor="middle">PISTA / ZONA AVIÓN</text>
+
+                <!-- AVIÓN -->
+                <g transform="translate(1080, 75)">
+                    <!-- fuselaje -->
+                    <ellipse cx="0" cy="0" rx="70" ry="14" fill="#cbd5e1" stroke="#475569" stroke-width="1.2"/>
+                    <!-- nariz -->
+                    <ellipse cx="60" cy="0" rx="20" ry="10" fill="#cbd5e1" stroke="#475569" stroke-width="1.2"/>
+                    <!-- cola -->
+                    <polygon points="-65,-3 -85,-22 -75,-2 -70,3" fill="#cbd5e1" stroke="#475569" stroke-width="1.2"/>
+                    <!-- ala -->
+                    <polygon points="-15,5 15,5 30,18 -5,18" fill="#f1f5f9" stroke="#475569" stroke-width="0.8"/>
+                    <!-- ventanas -->
+                    <rect x="-40" y="-3" width="60" height="3" fill="#bfdbfe" stroke="#1e40af" stroke-width="0.3"/>
+                    <!-- contenedor frente al avión -->
+                    <rect x="80" y="-12" width="35" height="22" fill="#92400e" stroke="#451a03" stroke-width="1"/>
+                    <rect x="83" y="-9" width="29" height="6" fill="#d97706"/>
+                </g>
+
+                <!-- TARIMAS (punto 2) -->
+                <g transform="translate(870, 75)">
+                    <!-- Tarima 1 -->
+                    <rect x="-30" y="-10" width="60" height="20" fill="#d97706" stroke="#92400e" stroke-width="1"/>
+                    <rect x="-30" y="-10" width="60" height="4" fill="#fbbf24"/>
+                    <rect x="-30" y="2" width="60" height="4" fill="#fbbf24"/>
+                    <!-- Cajas encima -->
+                    <rect x="-22" y="-22" width="20" height="12" fill="#fde68a" stroke="#b45309" stroke-width="0.5"/>
+                    <rect x="2" y="-22" width="20" height="12" fill="#fde68a" stroke="#b45309" stroke-width="0.5"/>
+                </g>
+
+                <!-- Personas en zona de pista (puntos 3 y 4) -->
+                <g transform="translate(700, 70)">
+                    <circle cx="0" cy="-15" r="5" fill="#1e293b"/>
+                    <rect x="-5" y="-9" width="10" height="18" rx="2" fill="#1e293b"/>
+                </g>
+                <g transform="translate(750, 70)">
+                    <circle cx="0" cy="-15" r="5" fill="#1e293b"/>
+                    <rect x="-5" y="-9" width="10" height="18" rx="2" fill="#1e293b"/>
+                </g>
+            </g>
+
+            <!-- ============ ESTRUCTURA DE LA BODEGA (en forma de L) ============ -->
+
+            <!-- Bodega principal: gran rectángulo horizontal arriba -->
+            <!-- Coordenadas: (60, 170) a (1130, 470) -->
+            <g id="bodega-principal">
+                <!-- Piso/fill -->
+                <rect x="60" y="170" width="1070" height="300" fill="#f8fafc" stroke="none"/>
+
+                <!-- Paredes exteriores -->
+                <path fill="none" stroke="#1e293b" stroke-width="2.5" d="
+                    M 60 170 L 1130 170
+                    L 1130 470
+                    L 460 470
+                    L 460 530
+                    L 270 530
+                    L 270 470
+                    L 60 470 Z"/>
+
+                <!-- División interior: separa Área de Aforo (izquierda) de Bodega Courier (derecha) -->
+                <line class="wall" x1="270" y1="170" x2="270" y2="470"/>
+
+                <!-- Etiquetas de áreas -->
+                <text x="165" y="200" fill="#475569" font-size="11" font-weight="700" font-family="Arial" text-anchor="middle">ÁREA DE AFORO</text>
+                <text x="700" y="200" fill="#475569" font-size="11" font-weight="700" font-family="Arial" text-anchor="middle">BODEGA DE COURIER</text>
+
+                <!-- ====== ÁREA DE AFORO PRINCIPAL (racks azules - Aforo 1) ====== -->
+                <g id="aforo-1">
+                    <!-- Racks de aforo en columnas verticales -->
+                    <g class="rack-aforo">
+                        <rect x="90" y="240" width="22" height="180" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                        <rect x="90" y="240" width="22" height="180" fill="none" stroke="#64748b" stroke-width="0.5"/>
+                        <line x1="90" y1="280" x2="112" y2="280" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="90" y1="320" x2="112" y2="320" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="90" y1="360" x2="112" y2="360" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="90" y1="400" x2="112" y2="400" stroke="#94a3b8" stroke-width="0.5"/>
+
+                        <rect x="125" y="240" width="22" height="180" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                        <rect x="125" y="240" width="22" height="180" fill="none" stroke="#64748b" stroke-width="0.5"/>
+                        <line x1="125" y1="280" x2="147" y2="280" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="125" y1="320" x2="147" y2="320" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="125" y1="360" x2="147" y2="360" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="125" y1="400" x2="147" y2="400" stroke="#94a3b8" stroke-width="0.5"/>
+
+                        <rect x="160" y="240" width="22" height="180" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                        <rect x="160" y="240" width="22" height="180" fill="none" stroke="#64748b" stroke-width="0.5"/>
+                        <line x1="160" y1="280" x2="182" y2="280" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="160" y1="320" x2="182" y2="320" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="160" y1="360" x2="182" y2="360" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="160" y1="400" x2="182" y2="400" stroke="#94a3b8" stroke-width="0.5"/>
+
+                        <rect x="195" y="240" width="22" height="180" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                        <rect x="195" y="240" width="22" height="180" fill="none" stroke="#64748b" stroke-width="0.5"/>
+                        <line x1="195" y1="280" x2="217" y2="280" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="195" y1="320" x2="217" y2="320" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="195" y1="360" x2="217" y2="360" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="195" y1="400" x2="217" y2="400" stroke="#94a3b8" stroke-width="0.5"/>
+
+                        <rect x="230" y="240" width="22" height="180" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                        <rect x="230" y="240" width="22" height="180" fill="none" stroke="#64748b" stroke-width="0.5"/>
+                        <line x1="230" y1="280" x2="252" y2="280" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="230" y1="320" x2="252" y2="320" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="230" y1="360" x2="252" y2="360" stroke="#94a3b8" stroke-width="0.5"/>
+                        <line x1="230" y1="400" x2="252" y2="400" stroke="#94a3b8" stroke-width="0.5"/>
+                    </g>
+                </g>
+
+                <!-- ====== BODEGA COURIER (racks horizontales) ====== -->
+                <g id="bodega-courier-racks">
+                    <!-- Racks como filas horizontales (rectángulos con divisiones) -->
+                    <rect x="380" y="245" width="700" height="14" fill="#e2e8f0" stroke="#64748b" stroke-width="0.5"/>
+                    <g stroke="#64748b" stroke-width="0.4">
+                        <line x1="395" y1="245" x2="395" y2="259"/>
+                        <line x1="430" y1="245" x2="430" y2="259"/>
+                        <line x1="465" y1="245" x2="465" y2="259"/>
+                        <line x1="500" y1="245" x2="500" y2="259"/>
+                        <line x1="535" y1="245" x2="535" y2="259"/>
+                        <line x1="570" y1="245" x2="570" y2="259"/>
+                        <line x1="605" y1="245" x2="605" y2="259"/>
+                        <line x1="640" y1="245" x2="640" y2="259"/>
+                        <line x1="675" y1="245" x2="675" y2="259"/>
+                        <line x1="710" y1="245" x2="710" y2="259"/>
+                        <line x1="745" y1="245" x2="745" y2="259"/>
+                        <line x1="780" y1="245" x2="780" y2="259"/>
+                        <line x1="815" y1="245" x2="815" y2="259"/>
+                        <line x1="850" y1="245" x2="850" y2="259"/>
+                        <line x1="885" y1="245" x2="885" y2="259"/>
+                        <line x1="920" y1="245" x2="920" y2="259"/>
+                        <line x1="955" y1="245" x2="955" y2="259"/>
+                        <line x1="990" y1="245" x2="990" y2="259"/>
+                        <line x1="1025" y1="245" x2="1025" y2="259"/>
+                        <line x1="1060" y1="245" x2="1060" y2="259"/>
+                    </g>
+
+                    <rect x="380" y="290" width="700" height="14" fill="#e2e8f0" stroke="#64748b" stroke-width="0.5"/>
+                    <g stroke="#64748b" stroke-width="0.4">
+                        <line x1="395" y1="290" x2="395" y2="304"/>
+                        <line x1="430" y1="290" x2="430" y2="304"/>
+                        <line x1="465" y1="290" x2="465" y2="304"/>
+                        <line x1="500" y1="290" x2="500" y2="304"/>
+                        <line x1="535" y1="290" x2="535" y2="304"/>
+                        <line x1="570" y1="290" x2="570" y2="304"/>
+                        <line x1="605" y1="290" x2="605" y2="304"/>
+                        <line x1="640" y1="290" x2="640" y2="304"/>
+                        <line x1="675" y1="290" x2="675" y2="304"/>
+                        <line x1="710" y1="290" x2="710" y2="304"/>
+                        <line x1="745" y1="290" x2="745" y2="304"/>
+                        <line x1="780" y1="290" x2="780" y2="304"/>
+                        <line x1="815" y1="290" x2="815" y2="304"/>
+                        <line x1="850" y1="290" x2="850" y2="304"/>
+                        <line x1="885" y1="290" x2="885" y2="304"/>
+                        <line x1="920" y1="290" x2="920" y2="304"/>
+                        <line x1="955" y1="290" x2="955" y2="304"/>
+                        <line x1="990" y1="290" x2="990" y2="304"/>
+                        <line x1="1025" y1="290" x2="1025" y2="304"/>
+                        <line x1="1060" y1="290" x2="1060" y2="304"/>
+                    </g>
+
+                    <rect x="380" y="350" width="700" height="14" fill="#e2e8f0" stroke="#64748b" stroke-width="0.5"/>
+                    <g stroke="#64748b" stroke-width="0.4">
+                        <line x1="395" y1="350" x2="395" y2="364"/>
+                        <line x1="430" y1="350" x2="430" y2="364"/>
+                        <line x1="465" y1="350" x2="465" y2="364"/>
+                        <line x1="500" y1="350" x2="500" y2="364"/>
+                        <line x1="535" y1="350" x2="535" y2="364"/>
+                        <line x1="570" y1="350" x2="570" y2="364"/>
+                        <line x1="605" y1="350" x2="605" y2="364"/>
+                        <line x1="640" y1="350" x2="640" y2="364"/>
+                        <line x1="675" y1="350" x2="675" y2="364"/>
+                        <line x1="710" y1="350" x2="710" y2="364"/>
+                        <line x1="745" y1="350" x2="745" y2="364"/>
+                        <line x1="780" y1="350" x2="780" y2="364"/>
+                        <line x1="815" y1="350" x2="815" y2="364"/>
+                        <line x1="850" y1="350" x2="850" y2="364"/>
+                        <line x1="885" y1="350" x2="885" y2="364"/>
+                        <line x1="920" y1="350" x2="920" y2="364"/>
+                        <line x1="955" y1="350" x2="955" y2="364"/>
+                        <line x1="990" y1="350" x2="990" y2="364"/>
+                        <line x1="1025" y1="350" x2="1025" y2="364"/>
+                        <line x1="1060" y1="350" x2="1060" y2="364"/>
+                    </g>
+
+                    <rect x="380" y="395" width="700" height="14" fill="#e2e8f0" stroke="#64748b" stroke-width="0.5"/>
+                    <g stroke="#64748b" stroke-width="0.4">
+                        <line x1="395" y1="395" x2="395" y2="409"/>
+                        <line x1="430" y1="395" x2="430" y2="409"/>
+                        <line x1="465" y1="395" x2="465" y2="409"/>
+                        <line x1="500" y1="395" x2="500" y2="409"/>
+                        <line x1="535" y1="395" x2="535" y2="409"/>
+                        <line x1="570" y1="395" x2="570" y2="409"/>
+                        <line x1="605" y1="395" x2="605" y2="409"/>
+                        <line x1="640" y1="395" x2="640" y2="409"/>
+                        <line x1="675" y1="395" x2="675" y2="409"/>
+                        <line x1="710" y1="395" x2="710" y2="409"/>
+                        <line x1="745" y1="395" x2="745" y2="409"/>
+                        <line x1="780" y1="395" x2="780" y2="409"/>
+                        <line x1="815" y1="395" x2="815" y2="409"/>
+                        <line x1="850" y1="395" x2="850" y2="409"/>
+                        <line x1="885" y1="395" x2="885" y2="409"/>
+                        <line x1="920" y1="395" x2="920" y2="409"/>
+                        <line x1="955" y1="395" x2="955" y2="409"/>
+                        <line x1="990" y1="395" x2="990" y2="409"/>
+                        <line x1="1025" y1="395" x2="1025" y2="409"/>
+                        <line x1="1060" y1="395" x2="1060" y2="409"/>
+                    </g>
+
+                    <!-- ====== MONCARGAS ====== -->
+                    <!-- Moncargas 1 (más a la derecha) -->
+                    <g transform="translate(800, 325)">
+                        <rect x="-18" y="-10" width="30" height="22" fill="#fbbf24" stroke="#b45309" stroke-width="1"/>
+                        <circle cx="-12" cy="13" r="4" fill="#1c1917"/>
+                        <circle cx="8" cy="13" r="4" fill="#1c1917"/>
+                        <!-- forks -->
+                        <line x1="12" y1="-5" x2="30" y2="-5" stroke="#57534e" stroke-width="1.5" fill="none"/>
+                        <line x1="12" y1="5" x2="30" y2="5" stroke="#57534e" stroke-width="1.5" fill="none"/>
+                        <rect x="25" y="-8" width="14" height="14" fill="#d97706" stroke="#92400e" stroke-width="0.8"/>
+                    </g>
+
+                    <!-- Moncargas 2 -->
+                    <g transform="translate(620, 325)">
+                        <rect x="-18" y="-10" width="30" height="22" fill="#fbbf24" stroke="#b45309" stroke-width="1"/>
+                        <circle cx="-12" cy="13" r="4" fill="#1c1917"/>
+                        <circle cx="8" cy="13" r="4" fill="#1c1917"/>
+                        <line x1="12" y1="-5" x2="30" y2="-5" stroke="#57534e" stroke-width="1.5" fill="none"/>
+                        <line x1="12" y1="5" x2="30" y2="5" stroke="#57534e" stroke-width="1.5" fill="none"/>
+                        <rect x="25" y="-8" width="14" height="14" fill="#d97706" stroke="#92400e" stroke-width="0.8"/>
+                    </g>
+
+                    <!-- ====== MÁQUINA RX (derecha) ====== -->
+                    <g transform="translate(1075, 230)">
+                        <!-- estructura -->
+                        <rect x="-25" y="-15" width="50" height="60" fill="#475569" stroke="#1e293b" stroke-width="1.5" rx="2"/>
+                        <!-- pantalla -->
+                        <rect x="-18" y="-8" width="36" height="18" fill="#0ea5e9" stroke="#0284c7" stroke-width="1"/>
+                        <!-- banda transportadora -->
+                        <rect x="-32" y="22" width="64" height="12" fill="#fbbf24" stroke="#b45309" stroke-width="1"/>
+                        <!-- detalle -->
+                        <text x="0" y="56" fill="#475569" font-size="10" font-family="Arial" text-anchor="middle" font-weight="700">RX</text>
+                    </g>
+                </g>
+            </g>
+
+            <!-- ====== ZONA INFERIOR: AFORO 2 (separado) ====== -->
+            <g id="aforo-2">
+                <!-- Marco exterior -->
+                <rect x="100" y="560" width="380" height="180" fill="#fafaf9" stroke="none"/>
+                <path fill="none" stroke="#1e293b" stroke-width="2.5" d="M 100 560 L 480 560 L 480 740 L 100 740 Z"/>
+
+                <text x="290" y="585" fill="#475569" font-size="11" font-weight="700" font-family="Arial" text-anchor="middle">AFORO 2 / DESCANSO DE TRAMITADORES</text>
+
+                <!-- Racks de aforo 2 (verticales) -->
+                <g>
+                    <rect x="130" y="620" width="22" height="80" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                    <rect x="155" y="620" width="22" height="80" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                    <rect x="180" y="620" width="22" height="80" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                    <rect x="220" y="620" width="22" height="80" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                    <rect x="245" y="620" width="22" height="80" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                    <rect x="270" y="620" width="22" height="80" fill="#dbeafe" stroke="#3b82f6" stroke-width="0.6"/>
+                </g>
+
+                <!-- Cajas/mercancía en aforo 2 -->
+                <g transform="translate(190, 605)">
+                    <rect x="-15" y="-8" width="30" height="16" fill="#d97706" stroke="#92400e" stroke-width="1"/>
+                    <rect x="-12" y="-5" width="24" height="3" fill="#fbbf24"/>
+                </g>
+
+                <!-- Personas -->
+                <g transform="translate(220, 660)">
+                    <circle cx="0" cy="-15" r="5" fill="#1e293b"/>
+                    <rect x="-5" y="-9" width="10" height="18" rx="2" fill="#1e293b"/>
+                </g>
+            </g>
+
+            <!-- ===== DIMENSIONES ===== -->
+            <g fill="none" stroke="#94a3b8" stroke-width="0.7">
+                <!-- Ancho total superior 73.35m -->
+                <line x1="270" y1="155" x2="1130" y2="155"/>
+                <line x1="270" y1="150" x2="270" y2="160"/>
+                <line x1="1130" y1="150" x2="1130" y2="160"/>
+                <text x="700" y="148" fill="#64748b" font-size="10" font-family="Arial" text-anchor="middle">73.35 m</text>
+
+                <!-- Ancho aforo principal -->
+                <line x1="60" y1="155" x2="270" y2="155"/>
+                <line x1="60" y1="150" x2="60" y2="160"/>
+                <text x="165" y="148" fill="#64748b" font-size="10" font-family="Arial" text-anchor="middle">20.25 m</text>
+
+                <!-- Alto bodega -->
+                <line x1="1145" y1="170" x2="1145" y2="470"/>
+                <line x1="1140" y1="170" x2="1150" y2="170"/>
+                <line x1="1140" y1="470" x2="1150" y2="470"/>
+                <text x="1163" y="320" fill="#64748b" font-size="10" font-family="Arial" text-anchor="middle" transform="rotate(90 1163 320)">30.45 m</text>
+
+                <!-- Ancho aforo 2 -->
+                <line x1="100" y1="755" x2="480" y2="755"/>
+                <text x="290" y="770" fill="#64748b" font-size="10" font-family="Arial" text-anchor="middle">22.89 m</text>
+
+                <!-- Alto aforo 2 -->
+                <line x1="495" y1="560" x2="495" y2="740"/>
+                <text x="510" y="655" fill="#64748b" font-size="10" font-family="Arial" text-anchor="middle" transform="rotate(90 510 655)">19.80 m</text>
+            </g>
+
+            <!-- ============ CAMINOS DEL FLUJO (líneas dashed entre puntos) ============ -->
+            <g id="paths"></g>
+
+            <!-- ============ PUNTOS NUMERADOS (generados con JS) ============ -->
+            <g id="points"></g>
+
+            <!-- ============ CARGA ANIMADA ============ -->
+            <g id="cargo-group" opacity="0">
+                <g class="cargo-pkg">
+                    <rect x="-14" y="-10" width="28" height="20" rx="2" fill="#fbbf24" stroke="#b45309" stroke-width="1.5"/>
+                    <line x1="-14" y1="-3" x2="14" y2="-3" stroke="#b45309" stroke-width="0.8"/>
+                    <line x1="0" y1="-10" x2="0" y2="10" stroke="#b45309" stroke-width="0.8"/>
+                </g>
+            </g>
+
+            <!-- ============ LEYENDA DE COLORES (esquina) ============ -->
+            <g transform="translate(60, 30)">
+                <rect x="0" y="0" width="280" height="60" fill="white" stroke="#cbd5e1" stroke-width="1" rx="4"/>
+                <rect x="10" y="10" width="20" height="12" fill="#fbbf24"/>
+                <text x="38" y="20" font-size="10" font-family="Arial" fill="#334155">Procesos cargas consolidadas</text>
+
+                <rect x="10" y="26" width="20" height="12" fill="#3b82f6"/>
+                <text x="38" y="36" font-size="10" font-family="Arial" fill="#334155">Procesos cargas en aforo 1</text>
+
+                <rect x="10" y="42" width="20" height="12" fill="#f97316"/>
+                <text x="38" y="52" font-size="10" font-family="Arial" fill="#334155">Procesos cargas en aforo 2</text>
+            </g>
+
+        </svg>
+
+        <div class="controls">
+            <button class="primary" id="btn-play">▶ Reproducir flujo</button>
+            <button id="btn-pause">⏸ Pausar</button>
+            <button id="btn-reset">⏮ Reiniciar</button>
+            <button id="btn-speed">Velocidad: 5x</button>
+            <div class="progress-info" id="progress-info">Listo · Haz clic en cualquier punto para ver detalles</div>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width: 0%"></div></div>
+
+        <div class="legend">
+            <span style="font-weight:600;">Heatmap de tiempos:</span>
+            <div class="legend-item"><div class="legend-swatch" style="background:#10b981"></div>Rápido (&lt;15m)</div>
+            <div class="legend-item"><div class="legend-swatch" style="background:#eab308"></div>Medio (15-45m)</div>
+            <div class="legend-item"><div class="legend-swatch" style="background:#f97316"></div>Lento (45-90m)</div>
+            <div class="legend-item"><div class="legend-swatch" style="background:#dc2626"></div>Crítico (&gt;90m)</div>
+        </div>
+    </div>
+<div class="left-panel">
+        <h2 id="view-title">Vista: Promedio general</h2>
+
+        <div id="active-point-info" class="info-box">
+            <h3>Punto activo</h3>
+            <div class="metric-value big" id="ap-name">Selecciona un punto</div>
+            <div style="margin-top: 6px;">
+                <div class="metric"><span class="metric-label">Tiempo promedio</span><span class="metric-value" id="ap-avg">—</span></div>
+                <div class="metric"><span class="metric-label">Mediana</span><span class="metric-value" id="ap-med">—</span></div>
+                <div class="metric"><span class="metric-label">Mín / Máx</span><span class="metric-value" id="ap-minmax">—</span></div>
+                <div class="metric"><span class="metric-label">Desv. estándar</span><span class="metric-value" id="ap-std">—</span></div>
+                <div class="metric"><span class="metric-label">n mediciones</span><span class="metric-value" id="ap-n">—</span></div>
+            </div>
+            <div class="transit-info hidden" id="transit-info">
+                <b>⏱ Tiempo muerto en tránsito</b>
+                <span id="transit-detail"></span>
+            </div>
+        </div>
+
+        <!-- Día selector info (solo visible en vistas día) -->
+        <div class="day-stats" id="day-stats">
+            <h4 id="day-stats-title"></h4>
+            <div class="day-stat-row"><span class="l">Vuelos</span><span class="v" id="ds-vuelos">—</span></div>
+            <div class="day-stat-row"><span class="l">Horas operación</span><span class="v" id="ds-horas">—</span></div>
+            <div class="day-stat-row"><span class="l">Bultos</span><span class="v" id="ds-bultos">—</span></div>
+            <div class="day-stat-row"><span class="l">Kilos</span><span class="v" id="ds-kg">—</span></div>
+            <div class="day-stat-row"><span class="l">Tarimas</span><span class="v" id="ds-tarimas">—</span></div>
+            <div class="day-stat-row"><span class="l">Sel. Verde / Rojo</span><span class="v" id="ds-sel">—</span></div>
+        </div>
+
+        <div class="section-title">📊 Pareto de tiempos</div>
+        <div id="pareto-container"></div>
+
+        <div class="section-title">⏱ Tiempos muertos entre puntos</div>
+        <div class="dead-time-section">
+            <div class="dead-time-row"><span class="l">P7 → P8 (1er escaneo)</span><span class="v">54 min</span></div>
+            <div class="dead-time-row"><span class="l">P8 → P9 (selectivo)</span><span class="v">21 min</span></div>
+            <div class="dead-time-row"><span class="l">P9 → P10 (gen. OEA)</span><span class="v">7 min</span></div>
+            <div class="dead-time-row"><span class="l">P10 → P11 (confirm. SAT)</span><span class="v">14 min</span></div>
+            <div class="dead-time-row"><span class="l">P11 → P12 (verif. doc.)</span><span class="v">6 min</span></div>
+            <div class="dead-time-row"><span class="l">P12 → P13 (2do escaneo)</span><span class="v">15 min</span></div>
+            <div class="dead-time-row"><span class="l">P13 → P14 (carga)</span><span class="v">15 min</span></div>
+            <div class="dead-time-row dead-time-total"><span class="l"><b>TOTAL acumulado</b></span><span class="v">132 min (02:12)</span></div>
+        </div>
+    <!-- PANEL 1: LAATS vs COMBEX por día -->
+     <div class="right-panel"></div>
+        <div class="compare-title">⚖ Comparativo LAATS vs COMBEXIM — por día</div>
+        <p style="font-size:11px;color:#64748b;margin-bottom:12px;">
+            Cada día se midió 1 vuelo despaletizado por LAATS y 1 por COMBEXIM. Esto permite comparar bajo condiciones similares de cada jornada.
+        </p>
+
+        <div class="compare-dia-block">
+            <div class="compare-dia-title">📅 Lunes 04/05/2026 — LAATS (FEDEX) vs COMBEXIM (UPS)</div>
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>Empresa</th><th>P2 Despalet.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="laats">
+                        <td class="laats-label">LAATS (FEDED)</td>
+                        <td>159 min</td>
+                        
+                    </tr>
+                    <tr class="combex">
+                        <td class="combex-label">COMBEXIM (UPS)</td>
+                        <td>55 min</td>
+                        
+                    </tr>
+                    <tr class="diff">
+                        <td>Diferencia</td>
+                        </td><td class="dif-pos">+104</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="font-size:11px;color:#92400e;margin-top:6px;background:#fef3c7;padding:6px 10px;border-radius:4px;">
+                ⚠ Lunes: LAATS se tardo casi el triple de lo que tardo Combex-im.
+            </p>
+        </div>
+
+        <div class="compare-dia-block">
+            <div class="compare-dia-title">📅 Miércoles 06/05/2026 — LAATS (DHL) vs COMBEXIM (UPS)</div>
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>Empresa</th><th>P2 Despalet.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="laats">
+                        <td class="laats-label">LAATS (DHL)</td>
+                        <td>85 min</td>
+                    </tr>
+                    <tr class="combex">
+                        <td class="combex-label">COMBEXIM (UPS)</td>
+                        <td>65 min</td>
+                    </tr>
+                    <tr class="diff">
+                        <td>Diferencia</td>
+                        <td class="dif-pos">+20</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="font-size:11px;color:#059669;margin-top:6px;background:#dcfce7;padding:6px 10px;border-radius:4px;">
+                ✓ Miércoles: Laats se tardo 0.4x que Combex-Im.
+            </p>
+        </div>
+
+        <div style="padding:10px 14px;background:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;margin-top:14px;">
+            <b style="color:#1e3a8a;">📌 Conclusión:</b>
+            <p style="font-size:12px;color:#1e3a8a;margin-top:4px;">
+                Entre los dos días Laats tuvo un tiempo de casi el triple que Combex-im.
+            </p>
+        </div>
+    </div>
+    </div>
+ <div class="right-panel"></div>
+    <div class="section-title">🎯 Hallazgos clave</div>
+             <div class="findings">
+            <div class="finding critical">
+                <b>Cuello #1 — P9 ROJO</b>
+                75 min promedio (6x más que verde).
+            </div>
+            <div class="finding warn">
+                <b>LAATS vs COMBEXIM</b>
+                Lunes: LAATS 2.7x más lento. Miércoles: LAATS 0.4x más lento.
+            </div>
+            <div class="finding warn">
+                <b>Tiempos muertos: 132 min</b>
+                Por operación. P7→P8 (54 min) es la mayor oportunidad controlable.
+            </div>
+            <div class="finding warn">
+                <b>Mesa 6 sobrecargada</b>
+                TRANSEXPRESS en mesa 6 tarda 05:43 hrs promedio.
+            </div>
+            </div>
+    </div>
+    </div>
+</div>
+<div class="section-title">🏭 Top 5 mesas más lentas</div>  
+        <div id="mesas-container">
+            <div class="mesa-row"><div class="mesa-num">6</div><div class="mesa-info">TELEFACSIMIL<br><span class="mesa-detail">30 bultos · 122V/204R</span></div><div class="mesa-time">05:43</div></div>
+            <div class="mesa-row"><div class="mesa-num">11</div><div class="mesa-info">Aeropost, Envios<br><span class="mesa-detail">50 bultos · 288V/461R</span></div><div class="mesa-time">05:04</div></div>
+            <div class="mesa-row"><div class="mesa-num">18</div><div class="mesa-info">TELEFACSIMIL<br><span class="mesa-detail">48 bultos · 149V/253R</span></div><div class="mesa-time">04:35</div></div>
+            <div class="mesa-row"><div class="mesa-num">3</div><div class="mesa-info">CPX<br><span class="mesa-detail">8 bultos · sin datos sel.</span></div><div class="mesa-time">04:11</div></div>
+            <div class="mesa-row"><div class="mesa-num">13</div><div class="mesa-info">Aeropost<br><span class="mesa-detail">20 bultos · 103V/188R</span></div><div class="mesa-time">03:56</div></div>
+        </div>
+        <p style="font-size:10px;color:#64748b;margin-top:6px;font-style:italic;">Ver tabla completa de las 14 mesas en panel inferior ↓</p>
+    </div>
+</div>
+    <!-- PANEL 2: Comparativo COMPLETO de mesas -->
+    <div class="compare-panel" style="grid-column: 1 / -1;">
+        <div class="compare-title">🏭 Comparativo COMPLETO de las mesas — Productividad</div>
+        <p style="font-size:11px;color:#64748b;margin-bottom:10px;">
+            Las mesas se comparan por <b>selectivos procesados por hora</b> — métrica que considera la carga real procesada, no solo el tiempo total. Una mesa lenta con muchos bultos puede ser más productiva que una rápida con pocos.
+        </p>
+        <table class="mesas-comparison-table" id="mesas-table">
+            <thead>
+                <tr>
+                    <th>#</th><th>Mesa</th><th>Empresas</th>
+                    <th>Bultos</th><th>Verdes</th><th>Rojos</th>
+                    <th>Tiempo</th><th>Selectivos/hr</th><th>Bultos/hr</th><th>Eficiencia</th>
+                </tr>
+            </thead>
+            <tbody id="mesas-tbody"></tbody>
+        </table>
+        <p style="font-size:11px;color:#64748b;margin-top:10px;font-style:italic;">
+            * Eficiencia: barra azul muestra productividad relativa (selectivos/hora) comparada con la mesa más productiva.
+        </p>
+    </div>
+</div>
+</div>
+<!-- PANEL: Comparativo COMPLETO de Couriers -->
+<div class="compare-panel" style="grid-column: 1 / -1;">
+
+    <div class="compare-title">
+        🏭 Comparativo COMPLETO de los Couriers
+    </div>
+
+    <p style="font-size:11px;color:#64748b;margin-bottom:10px;">
+        Tabla comparativa de productividad y carga procesada por las empresas Courier.
+    </p>
+
+    <table class="mesas-comparison-table" id="couriers-table">
+
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Empresa Courier</th>
+                <th>Ops</th>
+                <th style="background:#0f766e">Tiempo<br>total</th>
+                <th>Verdes</th>
+                <th>Rojos</th>
+                <th>Docs</th>
+                <th>Total<br>Sel.</th>
+                <th style="background:#2563eb">P8<br>seg/sel</th>
+                <th style="background:#059669">P9 Verde<br>seg/sel</th>
+                <th style="background:#dc2626">P9 Rojo<br>seg/sel</th>
+                <th style="background:#a855f7">P9 Doc<br>seg/sel</th>
+            </tr>
+        </thead>
+
+        <tbody id="couriers-tbody"></tbody>
+
+    </table>
+
+    <p style="font-size:11px;color:#64748b;margin-top:10px;font-style:italic;">
+        * Tiempo total = duración acumulada desde P7 (entrega) hasta el último punto medido (P14/P15). · Las columnas P8 / P9 muestran <b>segundos por selectivo individual</b>. <br>
+    
+    </p>
+
+</div>
+
+        
+
+<script>
+const DATA = {"vuelos": [{"label": "FEDEX 04/05 @12:00", "aerolinea": "FEDEX", "fecha": "2026-05-04", "despaletizo": "LAATS", "peso": 12614, "tarimas": 5, "p1": 71.0, "p2": 159.0, "p3": 186.0, "p4": 38.0, "p5": 188.0, "p6": 182.0, "n_couriers": 3}, {"label": "UPS 04/05 @05:20", "aerolinea": "UPS", "fecha": "2026-05-04", "despaletizo": "COMBEXIM", "peso": 11428.94, "tarimas": 12, "p1": 28.0, "p2": 55.0, "p3": 33.0, "p4": 48.0, "p5": 65.0, "p6": 74.0, "n_couriers": 9}, {"label": "DHL 06/05 @10:45", "aerolinea": "DHL", "fecha": "2026-05-06", "despaletizo": "LAATS", "peso": 24291.56, "tarimas": 18, "p1": 28.0, "p2": 85.0, "p3": 16.0, "p4": 30.0, "p5": 31.0, "p6": 60.0, "n_couriers": 7}, {"label": "UPS 06/05 @14:34", "aerolinea": "UPS", "fecha": "2026-05-06", "despaletizo": "COMBEXIM", "peso": 14355.39, "tarimas": 17, "p1": 30.0, "p2": 65.0, "p3": 45.0, "p4": 50.0, "p5": 103.0, "p6": 101.0, "n_couriers": 12}], "avion_avg": {"p1": 39.2, "p2": 91.0, "p3": 70.0, "p4": 41.5, "p5": 96.8, "p6": 104.2}, "despalet_stats": {"LAATS": {"n": 2, "avg": 122.0, "med": 122.0, "min": 85.0, "max": 159.0, "std": 52.3}, "COMBEXIM": {"n": 2, "avg": 60.0, "med": 60.0, "min": 55.0, "max": 65.0, "std": 7.1}}, "bodega_avg": {"p7": {"n": 31, "avg": 11.7, "med": 7.0, "min": 1.0, "max": 80.0, "std": 15.3}, "p8": {"n": 28, "avg": 28.1, "med": 22.0, "min": 1.0, "max": 125.0, "std": 26.2}, "p9v": {"n": 27, "avg": 12.2, "med": 10.0, "min": 4.0, "max": 42.0, "std": 8.0}, "p9r": {"n": 27, "avg": 74.6, "med": 65.0, "min": 3.0, "max": 186.0, "std": 61.9}, "p9d": {"n": 10, "avg": 4.9, "med": 4.0, "min": 0.0, "max": 14.0, "std": 4.9}, "p10v": {"n": 26, "avg": 7.6, "med": 2.0, "min": 0.0, "max": 30.0, "std": 9.7}, "p10r": {"n": 25, "avg": 16.2, "med": 4.0, "min": 0.0, "max": 129.0, "std": 31.9}, "p13v": {"n": 27, "avg": 8.7, "med": 8.0, "min": 0.0, "max": 29.0, "std": 6.9}, "p13r": {"n": 25, "avg": 9.4, "med": 7.0, "min": 1.0, "max": 31.0, "std": 8.3}, "p14v": {"n": 27, "avg": 17.1, "med": 6.0, "min": 2.0, "max": 183.0, "std": 35.6}, "p14r": {"n": 26, "avg": 10.2, "med": 5.0, "min": 0.0, "max": 65.0, "std": 13.6}, "p15_recep": {"n": 12, "avg": 29.4, "med": 23.0, "min": 4.0, "max": 97.0, "std": 26.2}, "p15_total": {"n": 6, "avg": 69.7, "med": 73.0, "min": 12.0, "max": 114.0, "std": 49.1}}, "bodega_verde": {"p7": {"n": 12, "avg": 7.8, "med": 6.0, "min": 1.0, "max": 20.0, "std": 5.9}, "p8": {"n": 11, "avg": 15.4, "med": 12.0, "min": 5.0, "max": 39.0, "std": 10.7}, "p9v": {"n": 12, "avg": 9.6, "med": 10.0, "min": 4.0, "max": 19.0, "std": 4.5}, "p9r": {"n": 12, "avg": 20.9, "med": 15.0, "min": 4.0, "max": 67.0, "std": 19.7}, "p9d": {"n": 2, "avg": 1.0, "med": 1.0, "min": 0.0, "max": 2.0, "std": 1.4}, "p10v": {"n": 12, "avg": 11.0, "med": 7.0, "min": 0.0, "max": 30.0, "std": 11.5}, "p10r": {"n": 12, "avg": 12.5, "med": 4.0, "min": 0.0, "max": 69.0, "std": 20.2}, "p13v": {"n": 11, "avg": 7.5, "med": 5.0, "min": 0.0, "max": 18.0, "std": 5.8}, "p13r": {"n": 12, "avg": 4.6, "med": 2.5, "min": 1.0, "max": 18.0, "std": 4.9}, "p14v": {"n": 11, "avg": 7.3, "med": 6.0, "min": 2.0, "max": 20.0, "std": 5.3}, "p14r": {"n": 12, "avg": 5.2, "med": 4.5, "min": 0.0, "max": 20.0, "std": 5.5}, "p15_recep": {"n": 3, "avg": 20.7, "med": 20.0, "min": 12.0, "max": 30.0, "std": 9.0}, "p15_total": {"n": 1, "avg": 32.0, "med": 32.0, "min": 32.0, "max": 32.0, "std": 0}}, "bodega_rojo": {"p7": {"n": 15, "avg": 15.2, "med": 8.0, "min": 2.0, "max": 80.0, "std": 19.5}, "p8": {"n": 15, "avg": 40.7, "med": 35.0, "min": 3.0, "max": 125.0, "std": 29.3}, "p9v": {"n": 15, "avg": 14.3, "med": 12.0, "min": 5.0, "max": 42.0, "std": 9.6}, "p9r": {"n": 15, "avg": 117.5, "med": 126.0, "min": 3.0, "max": 186.0, "std": 48.6}, "p9d": {"n": 6, "avg": 6.5, "med": 7.5, "min": 0.0, "max": 14.0, "std": 5.8}, "p10v": {"n": 14, "avg": 4.6, "med": 1.0, "min": 0.0, "max": 25.0, "std": 7.0}, "p10r": {"n": 13, "avg": 19.7, "med": 5.0, "min": 0.0, "max": 129.0, "std": 40.4}, "p13v": {"n": 14, "avg": 10.4, "med": 9.5, "min": 2.0, "max": 29.0, "std": 7.7}, "p13r": {"n": 13, "avg": 13.8, "med": 12.0, "min": 3.0, "max": 31.0, "std": 8.6}, "p14v": {"n": 14, "avg": 26.9, "med": 8.0, "min": 4.0, "max": 183.0, "std": 47.9}, "p14r": {"n": 14, "avg": 14.4, "med": 7.0, "min": 3.0, "max": 65.0, "std": 16.9}, "p15_recep": {"n": 6, "avg": 29.2, "med": 11.5, "min": 4.0, "max": 97.0, "std": 36.5}, "p15_total": {"n": 3, "avg": 52.7, "med": 32.0, "min": 12.0, "max": 114.0, "std": 54.0}}, "n_total_couriers": 31, "n_vuelos": 4, "kpis": {"vuelos": 4, "couriers_empresas": 22, "operaciones_courier": 31, "bultos": 600, "kg": 62690, "tarimas": 52, "verde": 3094, "rojo": 3755, "doc": 71, "total_selectivos": 6920}, "por_dia": {"2026-05-04": {"fecha_display": "Lunes 04/05", "vuelos": 2, "bultos": 222, "kg": 24043, "tarimas": 17, "horas": "18:21", "verde": 1047, "rojo": 1470, "doc": 16}, "2026-05-06": {"fecha_display": "Miércoles 06/05", "vuelos": 2, "bultos": 378, "kg": 38647, "tarimas": 35, "horas": "16:25", "verde": 2047, "rojo": 2285, "doc": 55}}, "tiempos_muertos": {"7": {"promedio_min": 53.7, "promedio_hhmm": "00:54", "max_hhmm": "06:14", "n": 15}, "8": {"promedio_min": 21.0, "promedio_hhmm": "00:21", "max_hhmm": "01:11", "n": 27}, "9": {"promedio_min": 7.1, "promedio_hhmm": "00:07", "max_hhmm": "00:14", "n": 9}, "10": {"promedio_min": 13.8, "promedio_hhmm": "00:14", "max_hhmm": "01:11", "n": 23}, "11": {"promedio_min": 6, "promedio_hhmm": "00:06", "max_hhmm": "00:41", "n": 22}, "12": {"promedio_min": 14.7, "promedio_hhmm": "00:15", "max_hhmm": "03:45", "n": 22}, "13": {"promedio_min": 15.4, "promedio_hhmm": "00:15", "max_hhmm": "01:56", "n": 27}}, "mesas_top": [{"mesa": "6", "empresas": "TELEFACSIMIL", "bultos": 30, "prom_hhmm": "05:43", "prom_min": 343}, {"mesa": "11", "empresas": "Aeropost, Envios", "bultos": 49.5, "prom_hhmm": "05:04", "prom_min": 304}, {"mesa": "18", "empresas": "TELEFACSIMIL", "bultos": 48, "prom_hhmm": "04:35", "prom_min": 275}, {"mesa": "3", "empresas": "CPX", "bultos": 8.33, "prom_hhmm": "04:11", "prom_min": 251}, {"mesa": "13", "empresas": "Aeropost", "bultos": 20, "prom_hhmm": "03:56", "prom_min": 236}], "despalet": {"LAATS": {"vuelos": 2, "pct": 50, "p2_avg_min": 122, "p2_avg_hhmm": "02:02"}, "COMBEXIM": {"vuelos": 2, "pct": 50, "p2_avg_min": 60, "p2_avg_hhmm": "01:00"}}};
+
+// Coordenadas de los puntos sobre el plano arquitectónico
+// Basadas en el viewBox 1200 x 780
+const POINTS = [
+    // ===== Zona de pista (parte superior) =====
+    {id: 0, x: 1085, y: 75,  label: "Arribo del vuelo",              key: "arribo", zone: "pista"},
+    {id: 1, x: 990,  y: 75,  label: "Descarga de aeronave",          key: "p1",     zone: "pista"},
+    {id: 2, x: 870,  y: 75,  label: "Despaletización",               key: "p2",     zone: "pista"},
+    {id: 3, x: 750,  y: 75,  label: "Recepción y cuadre de guías",   key: "p3",     zone: "pista"},
+    {id: 4, x: 700,  y: 75,  label: "Colocación de fleje",           key: "p4",     zone: "pista"},
+
+    // ===== Bodega courier (parte central) =====
+    {id: 5, x: 1075, y: 225, label: "Escaneo RX",                    key: "p5",     zone: "bodega"},
+    {id: 6, x: 850,  y: 270, label: "Traslado a bodega courier",     key: "p6",     zone: "bodega"},
+    {id: 7, x: 480,  y: 220, label: "Solicitud y entrega de carga",  key: "p7",     zone: "bodega"},
+
+    // ===== Área de aforo principal (izquierda arriba) =====
+    {id: 8, x: 165,  y: 285, label: "1er escaneo (handheld)",        key: "p8",     zone: "aforo1"},
+    {id: 9, x: 165,  y: 350, label: "Selectivos SAT",                key: "p9",     zone: "aforo1"},
+    {id: 10, x: 165, y: 350, label: "Generación OEA",                key: "p10",    zone: "aforo1"},
+    {id: 11, x: 165, y: 415, label: "Confirmación SAT",              key: "p11",    zone: "aforo1"},
+    {id: 12, x: 90,  y: 450, label: "Verificación documental",       key: "p12",    zone: "aforo1"},
+    {id: 13, x: 90,  y: 450, label: "2do escaneo paquetería",        key: "p13",    zone: "aforo1"},
+    {id: 14, x: 200, y: 490, label: "Carga de mercancía",            key: "p14",    zone: "aforo1"},
+
+    // ===== Punto 15: Retorno ticket (en el cruce) =====
+    {id: 15, x: 340, y: 290, label: "Retorno de ticket a bodega",    key: "p15",    zone: "aforo1"},
+];
+
+// Ajustar posiciones para no solapar (9-11 y 12-13 están agrupados en el original)
+POINTS[9].x = 165; POINTS[9].y = 355;
+POINTS[10].x = 195; POINTS[10].y = 355;  // separar un poco
+POINTS[11].x = 165; POINTS[11].y = 415;
+POINTS[12].x = 80;  POINTS[12].y = 450;
+POINTS[13].x = 115; POINTS[13].y = 450;
+POINTS[14].x = 220; POINTS[14].y = 495;
+POINTS[15].x = 340; POINTS[15].y = 290;
+
+// Punto 3 y 4 mejor separados
+POINTS[3].x = 770; POINTS[3].y = 70;
+POINTS[4].x = 720; POINTS[4].y = 70;
+
+const FLOW = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+
+let currentView = 'avg';
+let speedMultiplier = 5;
+const speedOptions = [1, 2, 5, 10, 20];
+let speedIdx = 2;
+let isPlaying = false;
+let animationFrame = null;
+let currentStep = 0;
+let activePointId = null;
+let stepStartTime = null;
+let phase = 'idle';
+
+function getPointValue(pointKey, view) {
+    if (view === 'avg') {
+        if (pointKey === 'arribo') return 0;
+        if (['p1','p2','p3','p4','p5','p6'].includes(pointKey)) return DATA.avion_avg[pointKey];
+        const b = DATA.bodega_avg;
+        if (pointKey === 'p7') return b.p7.avg;
+        if (pointKey === 'p8') return b.p8.avg;
+        if (pointKey === 'p9') return (b.p9v.avg + b.p9r.avg) / 2;
+        if (pointKey === 'p10') return (b.p10v.avg + b.p10r.avg) / 2;
+        if (pointKey === 'p11') return 5;
+        if (pointKey === 'p12') return 3;
+        if (pointKey === 'p13') return (b.p13v.avg + b.p13r.avg) / 2;
+        if (pointKey === 'p14') return (b.p14v.avg + b.p14r.avg) / 2;
+        if (pointKey === 'p15') return b.p15_total.avg;
+    }
+    if (view === 'verde') {
+        if (pointKey === 'arribo') return 0;
+        if (['p1','p2','p3','p4','p5','p6'].includes(pointKey)) return DATA.avion_avg[pointKey];
+        const b = DATA.bodega_verde;
+        if (pointKey === 'p7') return b.p7.avg;
+        if (pointKey === 'p8') return b.p8.avg;
+        if (pointKey === 'p9') return b.p9v.avg;
+        if (pointKey === 'p10') return b.p10v.avg;
+        if (pointKey === 'p11') return 3;
+        if (pointKey === 'p12') return 2;
+        if (pointKey === 'p13') return b.p13v.avg;
+        if (pointKey === 'p14') return b.p14v.avg;
+        if (pointKey === 'p15') return b.p15_total.avg;
+    }
+    if (view === 'rojo') {
+        if (pointKey === 'arribo') return 0;
+        if (['p1','p2','p3','p4','p5','p6'].includes(pointKey)) return DATA.avion_avg[pointKey];
+        const b = DATA.bodega_rojo;
+        if (pointKey === 'p7') return b.p7.avg;
+        if (pointKey === 'p8') return b.p8.avg;
+        if (pointKey === 'p9') return b.p9r.avg;
+        if (pointKey === 'p10') return b.p10r.avg;
+        if (pointKey === 'p11') return 8;
+        if (pointKey === 'p12') return 5;
+        if (pointKey === 'p13') return b.p13r.avg;
+        if (pointKey === 'p14') return b.p14r.avg;
+        if (pointKey === 'p15') return b.p15_total.avg;
+    }
+    if (view === 'dia1' || view === 'dia2') {
+        // Vista por día: tomar promedio solo de los vuelos de ese día
+        const fecha = view === 'dia1' ? '2026-05-04' : '2026-05-06';
+        const vuelosDia = DATA.vuelos.filter(v => v.fecha === fecha);
+        if (pointKey === 'arribo') return 0;
+        if (['p1','p2','p3','p4','p5','p6'].includes(pointKey)) {
+            const vals = vuelosDia.map(v => v[pointKey]).filter(x => x != null);
+            return vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
+        }
+        // Para P7-P15 usar promedio general (los datos están agregados, no por día)
+        const b = DATA.bodega_avg;
+        if (pointKey === 'p7') return b.p7.avg;
+        if (pointKey === 'p8') return b.p8.avg;
+        if (pointKey === 'p9') return (b.p9v.avg + b.p9r.avg) / 2;
+        if (pointKey === 'p10') return (b.p10v.avg + b.p10r.avg) / 2;
+        if (pointKey === 'p11') return 5;
+        if (pointKey === 'p12') return 3;
+        if (pointKey === 'p13') return (b.p13v.avg + b.p13r.avg) / 2;
+        if (pointKey === 'p14') return (b.p14v.avg + b.p14r.avg) / 2;
+        if (pointKey === 'p15') return b.p15_total.avg;
+    }
+    if (view.startsWith('vuelo')) {
+        const idx = parseInt(view.replace('vuelo','')) - 1;
+        const v = DATA.vuelos[idx];
+        if (pointKey === 'arribo') return 0;
+        if (['p1','p2','p3','p4','p5','p6'].includes(pointKey)) return v[pointKey];
+        const b = DATA.bodega_avg;
+        if (pointKey === 'p7') return b.p7.avg;
+        if (pointKey === 'p8') return b.p8.avg;
+        if (pointKey === 'p9') return (b.p9v.avg + b.p9r.avg) / 2;
+        if (pointKey === 'p10') return (b.p10v.avg + b.p10r.avg) / 2;
+        if (pointKey === 'p11') return 5;
+        if (pointKey === 'p12') return 3;
+        if (pointKey === 'p13') return (b.p13v.avg + b.p13r.avg) / 2;
+        if (pointKey === 'p14') return (b.p14v.avg + b.p14r.avg) / 2;
+        if (pointKey === 'p15') return b.p15_total.avg;
+    }
+    return 0;
+}
+
+function getHeatColor(minutes) {
+    if (minutes === 0) return '#94a3b8';
+    if (minutes < 15)  return '#10b981';
+    if (minutes < 45)  return '#eab308';
+    if (minutes < 90)  return '#f97316';
+    return '#dc2626';
+}
+
+function getPointStats(pointKey, view) {
+    if (pointKey === 'arribo') {
+        return {n: 4, avg: 0, med: 0, min: 0, max: 0, std: 0, isInstant: true};
+    }
+    if (['p1','p2','p3','p4','p5','p6'].includes(pointKey)) {
+        const vals = DATA.vuelos.map(v => v[pointKey]).filter(x => x != null);
+        if (!vals.length) return {n:0,avg:'—',med:'—',min:'—',max:'—',std:'—'};
+        const sum = vals.reduce((a,b)=>a+b, 0);
+        const avg = sum / vals.length;
+        const sorted = [...vals].sort((a,b)=>a-b);
+        const med = sorted[Math.floor(sorted.length/2)];
+        const std = Math.sqrt(vals.reduce((a,b)=>a+(b-avg)**2,0)/vals.length);
+        return {n: vals.length, avg: avg.toFixed(1), med: med.toFixed(1),
+                min: Math.min(...vals), max: Math.max(...vals), std: std.toFixed(1)};
+    }
+    let dataset;
+    if (view === 'verde') dataset = DATA.bodega_verde;
+    else if (view === 'rojo') dataset = DATA.bodega_rojo;
+    else dataset = DATA.bodega_avg;
+
+    let stat;
+    if (pointKey === 'p7') stat = dataset.p7;
+    else if (pointKey === 'p8') stat = dataset.p8;
+    else if (pointKey === 'p9') {
+        if (view === 'verde') stat = dataset.p9v;
+        else if (view === 'rojo') stat = dataset.p9r;
+        else stat = {n: dataset.p9v.n + dataset.p9r.n,
+                     avg: ((dataset.p9v.avg + dataset.p9r.avg)/2).toFixed(1),
+                     med: '—', min: Math.min(dataset.p9v.min, dataset.p9r.min),
+                     max: Math.max(dataset.p9v.max, dataset.p9r.max), std: '—'};
+    }
+    else if (pointKey === 'p10') {
+        if (view === 'verde') stat = dataset.p10v;
+        else if (view === 'rojo') stat = dataset.p10r;
+        else stat = {n: dataset.p10v.n + dataset.p10r.n,
+                     avg: ((dataset.p10v.avg + dataset.p10r.avg)/2).toFixed(1),
+                     med: '—', min: Math.min(dataset.p10v.min, dataset.p10r.min),
+                     max: Math.max(dataset.p10v.max, dataset.p10r.max), std: '—'};
+    }
+    else if (pointKey === 'p11') stat = {n: '—', avg: '~5', med: '—', min: '—', max: '—', std: '—'};
+    else if (pointKey === 'p12') stat = {n: '—', avg: '~3', med: '—', min: '—', max: '—', std: '—'};
+    else if (pointKey === 'p13') {
+        if (view === 'verde') stat = dataset.p13v;
+        else if (view === 'rojo') stat = dataset.p13r;
+        else stat = {n: dataset.p13v.n + dataset.p13r.n,
+                     avg: ((dataset.p13v.avg + dataset.p13r.avg)/2).toFixed(1),
+                     med: '—', min: Math.min(dataset.p13v.min, dataset.p13r.min),
+                     max: Math.max(dataset.p13v.max, dataset.p13r.max), std: '—'};
+    }
+    else if (pointKey === 'p14') {
+        if (view === 'verde') stat = dataset.p14v;
+        else if (view === 'rojo') stat = dataset.p14r;
+        else stat = {n: dataset.p14v.n + dataset.p14r.n,
+                     avg: ((dataset.p14v.avg + dataset.p14r.avg)/2).toFixed(1),
+                     med: '—', min: Math.min(dataset.p14v.min, dataset.p14r.min),
+                     max: Math.max(dataset.p14v.max, dataset.p14r.max), std: '—'};
+    }
+    else if (pointKey === 'p15') stat = dataset.p15_total;
+
+    return stat;
+}
+
+const svgNS = "http://www.w3.org/2000/svg";
+
+function renderPaths() {
+    const g = document.getElementById('paths');
+    g.innerHTML = '';
+    for (let i = 0; i < FLOW.length - 1; i++) {
+        const p1 = POINTS[FLOW[i]];
+        const p2 = POINTS[FLOW[i+1]];
+        const line = document.createElementNS(svgNS, 'path');
+        const midX = (p1.x + p2.x) / 2;
+        const midY = Math.min(p1.y, p2.y) - 15;
+        const d = `M ${p1.x} ${p1.y} Q ${midX} ${midY} ${p2.x} ${p2.y}`;
+        line.setAttribute('d', d);
+        line.setAttribute('class', 'flow-path');
+        line.setAttribute('id', `path-${i}`);
+        g.appendChild(line);
+    }
+}
+
+function renderPoints() {
+    const g = document.getElementById('points');
+    g.innerHTML = '';
+    POINTS.forEach(p => {
+        const value = getPointValue(p.key, currentView);
+        const color = getHeatColor(value);
+
+        // círculo del punto
+        const circle = document.createElementNS(svgNS, 'circle');
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('r', 16);
+        circle.setAttribute('fill', color);
+        circle.setAttribute('class', 'point-circle');
+        circle.setAttribute('id', `point-${p.id}`);
+        circle.setAttribute('data-id', p.id);
+        circle.addEventListener('click', () => selectPoint(p.id));
+        g.appendChild(circle);
+
+        // número del punto
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', p.x);
+        label.setAttribute('y', p.y);
+        label.setAttribute('class', 'point-label');
+        label.textContent = p.id;
+        g.appendChild(label);
+
+        // etiqueta con el tiempo (en caja blanca debajo)
+        if (value > 0) {
+            const text_w = 36;
+            const bg = document.createElementNS(svgNS, 'rect');
+            bg.setAttribute('x', p.x - text_w/2);
+            bg.setAttribute('y', p.y + 18);
+            bg.setAttribute('width', text_w);
+            bg.setAttribute('height', 13);
+            bg.setAttribute('class', 'point-time-bg');
+            bg.setAttribute('rx', 3);
+            g.appendChild(bg);
+
+            const tlabel = document.createElementNS(svgNS, 'text');
+            tlabel.setAttribute('x', p.x);
+            tlabel.setAttribute('y', p.y + 28);
+            tlabel.setAttribute('class', 'point-time');
+            tlabel.textContent = `${value.toFixed(0)} min`;
+            g.appendChild(tlabel);
+        }
+    });
+}
+
+function selectPoint(id) {
+    activePointId = id;
+    POINTS.forEach(p => {
+        const el = document.getElementById(`point-${p.id}`);
+        if (el) el.classList.toggle('active', p.id === id);
+    });
+    // Ocultar transit info al seleccionar manualmente
+    if (phase !== 'transit') {
+        const ti = document.getElementById('transit-info');
+        if (ti) ti.classList.add('hidden');
+    }
+    updatePanel(id);
+}
+
+function updatePanel(pointId) {
+    const p = POINTS[pointId];
+    const stat = getPointStats(p.key, currentView);
+
+    document.getElementById('ap-name').textContent = `P${p.id}: ${p.label}`;
+    if (stat.isInstant) {
+        document.getElementById('ap-avg').textContent = 'Instantáneo';
+        document.getElementById('ap-med').textContent = '—';
+        document.getElementById('ap-minmax').textContent = '—';
+        document.getElementById('ap-std').textContent = '—';
+        document.getElementById('ap-n').textContent = '4 vuelos';
+    } else {
+        document.getElementById('ap-avg').textContent = `${stat.avg} min`;
+        document.getElementById('ap-med').textContent = `${stat.med} min`;
+        document.getElementById('ap-minmax').textContent = `${stat.min} / ${stat.max} min`;
+        document.getElementById('ap-std').textContent = `${stat.std}`;
+        document.getElementById('ap-n').textContent = `${stat.n}`;
+    }
+}
+
+function renderPareto() {
+    const container = document.getElementById('pareto-container');
+    container.innerHTML = '';
+    const items = POINTS.slice(1).map(p => ({
+        label: `P${p.id}`,
+        value: getPointValue(p.key, currentView),
+        color: getHeatColor(getPointValue(p.key, currentView))
+    })).filter(x => x.value > 0).sort((a,b)=> b.value - a.value);
+
+    const maxVal = items[0]?.value || 1;
+    items.slice(0, 10).forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'pareto-row';
+        row.innerHTML = `
+            <div class="pareto-label">${item.label}</div>
+            <div class="pareto-bar-container">
+                <div class="pareto-bar" style="width: ${(item.value/maxVal*100).toFixed(0)}%; background: ${item.color};"></div>
+            </div>
+            <div class="pareto-value" style="color: ${item.color};">${item.value.toFixed(0)}m</div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function updateView(view) {
+    currentView = view;
+    document.querySelectorAll('.view-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === view);
+    });
+    const titles = {
+        'avg': 'Vista: Promedio general',
+        'verde': 'Vista: Solo selectivo VERDE',
+        'rojo': 'Vista: Solo selectivo ROJO',
+        'dia1': 'Vista: Lunes 04/05/2026',
+        'dia2': 'Vista: Miércoles 06/05/2026',
+        'vuelo1': `Vista: ${DATA.vuelos[0].label}`,
+        'vuelo2': `Vista: ${DATA.vuelos[1].label}`,
+        'vuelo3': `Vista: ${DATA.vuelos[2].label}`,
+        'vuelo4': `Vista: ${DATA.vuelos[3].label}`,
+    };
+    document.getElementById('view-title').textContent = titles[view] || 'Vista';
+
+    // Mostrar/ocultar panel de día
+    const dayStats = document.getElementById('day-stats');
+    if (view === 'dia1' || view === 'dia2') {
+        const fecha = view === 'dia1' ? '2026-05-04' : '2026-05-06';
+        const d = DATA.por_dia[fecha];
+        dayStats.classList.add('show');
+        document.getElementById('day-stats-title').textContent = `📅 ${d.fecha_display}`;
+        document.getElementById('ds-vuelos').textContent = d.vuelos;
+        document.getElementById('ds-horas').textContent = d.horas + ' hrs';
+        document.getElementById('ds-bultos').textContent = d.bultos.toLocaleString();
+        document.getElementById('ds-kg').textContent = d.kg.toLocaleString() + ' kg';
+        document.getElementById('ds-tarimas').textContent = d.tarimas;
+        document.getElementById('ds-sel').textContent = `${d.verde.toLocaleString()} / ${d.rojo.toLocaleString()}`;
+    } else {
+        dayStats.classList.remove('show');
+    }
+
+    renderPoints();
+    renderPareto();
+    if (activePointId !== null) updatePanel(activePointId);
+}
+
+// Animación
+function getStepDuration(pointId) {
+    const mins = getPointValue(POINTS[pointId].key, currentView);
+    return Math.max((mins * 1000) / speedMultiplier, 500);
+}
+function getTransitionDuration() { return 700 / Math.sqrt(speedMultiplier); }
+
+function play() {
+    if (isPlaying) return;
+    isPlaying = true;
+    if (currentStep >= FLOW.length) currentStep = 0;
+    if (phase === 'idle') {
+        phase = 'process';
+        stepStartTime = performance.now();
+        selectPoint(FLOW[currentStep]);
+        positionCargo(POINTS[FLOW[currentStep]]);
+        showCargo();
+    }
+    animationFrame = requestAnimationFrame(tick);
+}
+function pause() {
+    isPlaying = false;
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+}
+function reset() {
+    pause();
+    currentStep = 0;
+    phase = 'idle';
+    stepStartTime = null;
+    hideCargo();
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('progress-info').textContent = 'Listo';
+    document.querySelectorAll('.flow-path').forEach(l => l.classList.remove('active'));
+    POINTS.forEach(p => {
+        const el = document.getElementById(`point-${p.id}`);
+        if (el) el.classList.remove('active');
+    });
+    activePointId = null;
+}
+function showCargo() { document.getElementById('cargo-group').setAttribute('opacity', '1'); }
+function hideCargo() { document.getElementById('cargo-group').setAttribute('opacity', '0'); }
+function positionCargo(point) {
+    document.getElementById('cargo-group').setAttribute('transform', `translate(${point.x}, ${point.y})`);
+}
+function interpolateCargo(p1, p2, t) {
+    const midX = (p1.x + p2.x) / 2;
+    const midY = Math.min(p1.y, p2.y) - 15;
+    const x = (1-t)*(1-t)*p1.x + 2*(1-t)*t*midX + t*t*p2.x;
+    const y = (1-t)*(1-t)*p1.y + 2*(1-t)*t*midY + t*t*p2.y;
+    return {x, y};
+}
+
+function tick(now) {
+    if (!isPlaying) return;
+    if (!stepStartTime) stepStartTime = now;
+    const elapsed = now - stepStartTime;
+    const pointId = FLOW[currentStep];
+    const point = POINTS[pointId];
+
+    if (phase === 'process') {
+        const duration = getStepDuration(pointId);
+        const t = Math.min(elapsed / duration, 1);
+        const mins = getPointValue(point.key, currentView);
+        document.getElementById('progress-info').textContent =
+            `P${pointId} ${point.label} · ${(t*mins).toFixed(0)}/${mins.toFixed(0)} min`;
+
+        if (t >= 1) {
+            if (currentStep < FLOW.length - 1) {
+                phase = 'transit';
+                stepStartTime = now;
+            } else {
+                isPlaying = false;
+                phase = 'idle';
+                document.getElementById('progress-info').textContent = '✓ Flujo completado';
+                document.getElementById('progress-fill').style.width = '100%';
+                return;
+            }
+        }
+    } else if (phase === 'transit') {
+        const duration = getTransitionDuration();
+        const t = Math.min(elapsed / duration, 1);
+        const p1 = POINTS[FLOW[currentStep]];
+        const p2 = POINTS[FLOW[currentStep + 1]];
+        const pos = interpolateCargo(p1, p2, t);
+        document.getElementById('cargo-group').setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+        const pathEl = document.getElementById(`path-${currentStep}`);
+        if (pathEl) pathEl.classList.add('active');
+
+        // Mostrar tiempo muerto si existe para esta transición
+        const tmKey = String(currentStep + 1);
+        if (DATA.tiempos_muertos && DATA.tiempos_muertos[tmKey]) {
+            const tm = DATA.tiempos_muertos[tmKey];
+            document.getElementById('progress-info').textContent =
+                `⏱ Tránsito P${currentStep} → P${currentStep+1} · Tiempo muerto promedio: ${tm.promedio_hhmm} (${tm.promedio_min} min)`;
+            const ti = document.getElementById('transit-info');
+            ti.classList.remove('hidden');
+            document.getElementById('transit-detail').textContent =
+                `${tm.promedio_hhmm} en transición P${currentStep}→P${currentStep+1} (n=${tm.n}, máx ${tm.max_hhmm})`;
+        } else {
+            document.getElementById('progress-info').textContent =
+                `→ Tránsito de P${currentStep} a P${currentStep+1}`;
+        }
+
+        if (t >= 1) {
+            currentStep++;
+            phase = 'process';
+            stepStartTime = now;
+            document.getElementById('transit-info').classList.add('hidden');
+            selectPoint(FLOW[currentStep]);
+            positionCargo(POINTS[FLOW[currentStep]]);
+        }
+    }
+    document.getElementById('progress-fill').style.width = `${(currentStep / FLOW.length) * 100}%`;
+    animationFrame = requestAnimationFrame(tick);
+}
+
+// Listeners
+document.querySelectorAll('.view-btn').forEach(b => {
+    b.addEventListener('click', () => updateView(b.dataset.view));
+});
+document.getElementById('btn-play').addEventListener('click', play);
+document.getElementById('btn-pause').addEventListener('click', pause);
+document.getElementById('btn-reset').addEventListener('click', reset);
+document.getElementById('btn-speed').addEventListener('click', () => {
+    speedIdx = (speedIdx + 1) % speedOptions.length;
+    speedMultiplier = speedOptions[speedIdx];
+    document.getElementById('btn-speed').textContent = `Velocidad: ${speedMultiplier}x`;
+});
+
+const MESAS_DATA = [
+  {rank: 1, mesa: '4', empresas: "CPX", bultos: 77.3, verde: 390, rojo: 573, prom: '03:44', sel_h: 260.6, bul_h: 20.73, eficiencia: 100},
+  {rank: 2, mesa: '9', empresas: "C&R Hnos., CA LOGISTICS, CPX, Fastmail, Inversiones espinela, LTF, Servicourier", bultos: 57.0, verde: 325, rojo: 234, prom: '03:03', sel_h: 185.9, bul_h: 18.66, eficiencia: 71},
+  {rank: 3, mesa: '2', empresas: "CPS, CPX", bultos: 15.8, verde: 308, rojo: 260, prom: '03:15', sel_h: 174.5, bul_h: 4.86, eficiencia: 67},
+  {rank: 4, mesa: '7', empresas: "LECESA, PIDOBOX, TELEFACSIMIL", bultos: 44.0, verde: 288, rojo: 258, prom: '03:37', sel_h: 152.4, bul_h: 12.15, eficiencia: 58},
+  {rank: 5, mesa: '11', empresas: "Aeropost, Envios", bultos: 49.5, verde: 288, rojo: 461, prom: '05:04', sel_h: 147.6, bul_h: 9.77, eficiencia: 57},
+  {rank: 6, mesa: '1', empresas: "CPS, CPX", bultos: 11.5, verde: 248, rojo: 144, prom: '03:14', sel_h: 120.9, bul_h: 3.56, eficiencia: 46},
+  {rank: 7, mesa: '10', empresas: "Aeropost, TACSA", bultos: 35.5, verde: 180, rojo: 287, prom: '03:54', sel_h: 120.3, bul_h: 9.12, eficiencia: 46},
+  {rank: 8, mesa: '8', empresas: "CA LOGISTICS, Corporaci\u00f3n Chex, Liberty Express", bultos: 44.0, verde: 135, rojo: 235, prom: '03:28', sel_h: 116.8, bul_h: 12.69, eficiencia: 45},
+  {rank: 9, mesa: '15', empresas: "Aeropuerta, Servicourier", bultos: 40.0, verde: 201, rojo: 16, prom: '02:08', sel_h: 103.1, bul_h: 18.82, eficiencia: 40},
+  {rank: 10, mesa: '5', empresas: "TACSA", bultos: 6.0, verde: 93, rojo: 216, prom: '03:26', sel_h: 90.0, bul_h: 1.75, eficiencia: 35},
+  {rank: 11, mesa: '18', empresas: "TELEFACSIMIL", bultos: 48.0, verde: 149, rojo: 253, prom: '04:35', sel_h: 87.7, bul_h: 10.47, eficiencia: 34},
+  {rank: 12, mesa: '13', empresas: "Aeropost", bultos: 20.0, verde: 103, rojo: 188, prom: '03:56', sel_h: 74.0, bul_h: 5.08, eficiencia: 28},
+  {rank: 13, mesa: '16', empresas: "INTERLOGIXS", bultos: 44.0, verde: 104, rojo: 157, prom: '03:49', sel_h: 68.4, bul_h: 11.53, eficiencia: 26},
+  {rank: 14, mesa: '6', empresas: "TELEFACSIMIL", bultos: 30.0, verde: 122, rojo: 204, prom: '05:43', sel_h: 57.9, bul_h: 5.25, eficiencia: 22},
+
+];
+
+const COURIERS_DATA = [
+  {
+    rank: 1,
+    empresa: "CPX",
+    ops: 4,
+    tiempo_hhmm: "26:13",
+    tiempo_min: 1573.0,
+    verde: 451,
+    rojo: 689,
+    doc: 8,
+    p8_seg: 6.0,
+    p9v_seg: 6.7,
+    p9r_seg: 31.5,
+    p9d_seg: 180.0
+  },
+
+  {
+    rank: 2,
+    empresa: "FEDEX",
+    ops: 3,
+    tiempo_hhmm: "22:49",
+    tiempo_min: 1369.0,
+    verde: 160,
+    rojo: 271,
+    doc: 5,
+    p8_seg: 6.2,
+    p9v_seg: 15.8,
+    p9r_seg: 31.4,
+    p9d_seg: 96.0
+  },
+
+  {
+    rank: 3,
+    empresa: "Aeropost",
+    ops: 2,
+    tiempo_hhmm: "09:25",
+    tiempo_min: 565.0,
+    verde: 296,
+    rojo: 516,
+    doc: 0,
+    p8_seg: 6.7,
+    p9v_seg: 5.7,
+    p9r_seg: 29.1,
+    p9d_seg: null
+  },
+
+  {
+    rank: 4,
+    empresa: "CA LOGISTICS",
+    ops: 2,
+    tiempo_hhmm: "08:45",
+    tiempo_min: 525.0,
+    verde: 27,
+    rojo: 245,
+    doc: 42,
+    p8_seg: 24.5,
+    p9v_seg: 44.4,
+    p9r_seg: 46.3,
+    p9d_seg: 21.4
+  },
+
+  {
+    rank: 5,
+    empresa: "TACSA",
+    ops: 2,
+    tiempo_hhmm: "05:44",
+    tiempo_min: 344.0,
+    verde: 177,
+    rojo: 339,
+    doc: 0,
+    p8_seg: 4.9,
+    p9v_seg: 4.7,
+    p9r_seg: 33.8,
+    p9d_seg: null
+  },
+
+  {
+    rank: 6,
+    empresa: "TELEFACSIMIL",
+    ops: 2,
+    tiempo_hhmm: "05:43",
+    tiempo_min: 343.0,
+    verde: 392,
+    rojo: 660,
+    doc: 12,
+    p8_seg: 7.2,
+    p9v_seg: 6.3,
+    p9r_seg: 23.2,
+    p9d_seg: null
+  },
+
+  {
+    rank: 7,
+    empresa: "Servicourier",
+    ops: 2,
+    tiempo_hhmm: "05:13",
+    tiempo_min: 313.0,
+    verde: 146,
+    rojo: 13,
+    doc: 2,
+    p8_seg: 22.7,
+    p9v_seg: 10.7,
+    p9r_seg: 41.5,
+    p9d_seg: null
+  },
+
+  {
+    rank: 8,
+    empresa: "Liberty Express",
+    ops: 1,
+    tiempo_hhmm: "05:13",
+    tiempo_min: 313.0,
+    verde: 65,
+    rojo: 148,
+    doc: 0,
+    p8_seg: 6.8,
+    p9v_seg: 9.2,
+    p9r_seg: 58.4,
+    p9d_seg: null
+  },
+
+  {
+    rank: 9,
+    empresa: "Envios",
+    ops: 1,
+    tiempo_hhmm: "04:39",
+    tiempo_min: 279.0,
+    verde: 191,
+    rojo: 297,
+    doc: 0,
+    p8_seg: 3.0,
+    p9v_seg: 3.8,
+    p9r_seg: 34.9,
+    p9d_seg: null
+  },
+
+  {
+    rank: 10,
+    empresa: "INTERLOGIXS",
+    ops: 1,
+    tiempo_hhmm: "03:49",
+    tiempo_min: 229.0,
+    verde: 104,
+    rojo: 157,
+    doc: 0,
+    p8_seg: 8.0,
+    p9v_seg: 4.6,
+    p9r_seg: 27.9,
+    p9d_seg: null
+  },
+
+  {
+    rank: 11,
+    empresa: "Corporación Chex",
+    ops: 1,
+    tiempo_hhmm: "03:09",
+    tiempo_min: 189.0,
+    verde: 64,
+    rojo: 20,
+    doc: 0,
+    p8_seg: 15.0,
+    p9v_seg: 9.4,
+    p9r_seg: 162.0,
+    p9d_seg: null
+  },
+
+  {
+    rank: 12,
+    empresa: "PIDOBOX",
+    ops: 1,
+    tiempo_hhmm: "03:08",
+    tiempo_min: 188.0,
+    verde: 143,
+    rojo: 43,
+    doc: 0,
+    p8_seg: null,
+    p9v_seg: 4.2,
+    p9r_seg: 18.1,
+    p9d_seg: null
+  },
+
+  {
+    rank: 13,
+    empresa: "C&R Hnos.",
+    ops: 1,
+    tiempo_hhmm: "02:50",
+    tiempo_min: 170.0,
+    verde: 44,
+    rojo: 7,
+    doc: 0,
+    p8_seg: 31.8,
+    p9v_seg: 5.5,
+    p9r_seg: 51.4,
+    p9d_seg: null
+  },
+
+  {
+    rank: 14,
+    empresa: "Fastmail",
+    ops: 1,
+    tiempo_hhmm: "02:34",
+    tiempo_min: 154.0,
+    verde: 90,
+    rojo: 9,
+    doc: 2,
+    p8_seg: 4.2,
+    p9v_seg: 6.7,
+    p9r_seg: 120.0,
+    p9d_seg: 60.0
+  },
+
+  {
+    rank: 15,
+    empresa: "LTF",
+    ops: 1,
+    tiempo_hhmm: "02:17",
+    tiempo_min: 137.0,
+    verde: 12,
+    rojo: 9,
+    doc: 0,
+    p8_seg: 14.3,
+    p9v_seg: 35.0,
+    p9r_seg: 86.7,
+    p9d_seg: null
+  },
+
+  {
+    rank: 16,
+    empresa: "CPS",
+    ops: 1,
+    tiempo_hhmm: "02:15",
+    tiempo_min: 135.0,
+    verde: 495,
+    rojo: 287,
+    doc: 0,
+    p8_seg: 0.6,
+    p9v_seg: 2.1,
+    p9r_seg: 14.0,
+    p9d_seg: null
+  },
+
+  {
+    rank: 17,
+    empresa: "Aeropuerta",
+    ops: 1,
+    tiempo_hhmm: "02:13",
+    tiempo_min: 133.0,
+    verde: 118,
+    rojo: 10,
+    doc: 0,
+    p8_seg: 6.6,
+    p9v_seg: 5.1,
+    p9r_seg: 54.0,
+    p9d_seg: null
+  },
+
+  {
+    rank: 18,
+    empresa: "Inversiones espinela",
+    ops: 1,
+    tiempo_hhmm: "02:01",
+    tiempo_min: 121.0,
+    verde: 95,
+    rojo: 24,
+    doc: 0,
+    p8_seg: 3.5,
+    p9v_seg: 4.4,
+    p9r_seg: 55.0,
+    p9d_seg: null
+  },
+
+  {
+    rank: 19,
+    empresa: "LECESA",
+    ops: 1,
+    tiempo_hhmm: "02:01",
+    tiempo_min: 121.0,
+    verde: 24,
+    rojo: 11,
+    doc: 0,
+    p8_seg: 12.0,
+    p9v_seg: 10.0,
+    p9r_seg: 125.5,
+    p9d_seg: null
+  },
+
+  {
+    rank: 20,
+    empresa: "ORANGE",
+    ops: 1,
+    tiempo_hhmm: "01:37",
+    tiempo_min: 97.0,
+    verde: 0,
+    rojo: 0,
+    doc: 0,
+    p8_seg: null,
+    p9v_seg: null,
+    p9r_seg: null,
+    p9d_seg: null
+  },
+
+  {
+    rank: 21,
+    empresa: "Bestboxes",
+    ops: 1,
+    tiempo_hhmm: "—",
+    tiempo_min: 0,
+    verde: 0,
+    rojo: 0,
+    doc: 0,
+    p8_seg: null,
+    p9v_seg: null,
+    p9r_seg: null,
+    p9d_seg: null
+  }
+
+];
+
+
+function renderMesasTable() {
+    const tbody = document.getElementById('mesas-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    MESAS_DATA.forEach(m => {
+        let rankColor = '#10b981';
+        if (m.rank <= 5) rankColor = '#10b981';
+        else if (m.rank <= 10) rankColor = '#eab308';
+        else rankColor = '#dc2626';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><span style="background:${rankColor};color:white;padding:2px 6px;border-radius:3px;font-weight:700;font-size:9px;">${m.rank}</span></td>
+            <td><b>${m.mesa}</b></td>
+            <td class="empresa-cell">${m.empresas.substring(0, 30)}${m.empresas.length > 30 ? '...' : ''}</td>
+            <td>${m.bultos.toFixed(1)}</td>
+            <td style="color:#059669;font-weight:600;">${m.verde}</td>
+            <td style="color:#dc2626;font-weight:600;">${m.rojo}</td>
+            <td>${m.prom}</td>
+            <td><b>${m.sel_h.toFixed(1)}</b></td>
+            <td>${m.bul_h.toFixed(2)}</td>
+            <td class="bar-cell">
+                <div class="bar-fill" style="width:${m.eficiencia}%"></div>
+                <div class="bar-text">${m.eficiencia}%</div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+function renderCouriersTable() {
+    const tbody = document.getElementById('couriers-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    COURIERS_DATA.forEach(c => {
+        let rankColor = '#10b981';
+        if (c.rank <= 5) rankColor = '#dc2626';
+        else if (c.rank <= 10) rankColor = '#f97316';
+        else if (c.rank <= 15) rankColor = '#eab308';
+        else rankColor = '#10b981';
+
+        const total = (c.verde || 0) + (c.rojo || 0) + (c.doc || 0);
+
+        // helpers para formatear seg/sel
+        const fmtSeg = (v) => {
+            if (v === null || v === undefined) return '<span style="color:#94a3b8;">—</span>';
+            const color = v > 60 ? '#dc2626' : v > 30 ? '#f97316' : v > 15 ? '#eab308' : '#059669';
+            return `<span style="color:${color}; font-weight:700;">${v.toFixed(1)}s</span>`;
+        };
+
+        const tiempoTotal = c.tiempo_hhmm === '—' ? '<span style="color:#94a3b8;">—</span>'
+                          : `<b style="color:#0f766e;">${c.tiempo_hhmm}</b>`;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <span style="background:${rankColor};color:white;padding:2px 6px;border-radius:3px;font-weight:700;font-size:9px;">${c.rank}</span>
+            </td>
+            <td><b>${c.empresa}</b></td>
+            <td>${c.ops}</td>
+            <td>${tiempoTotal}</td>
+            <td style="color:#059669;font-weight:700;">${c.verde}</td>
+            <td style="color:#dc2626;font-weight:700;">${c.rojo}</td>
+            <td>${c.doc}</td>
+            <td><b>${total}</b></td>
+            <td>${fmtSeg(c.p8_seg)}</td>
+            <td>${fmtSeg(c.p9v_seg)}</td>
+            <td>${fmtSeg(c.p9r_seg)}</td>
+            <td>${fmtSeg(c.p9d_seg)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+renderMesasTable();
+renderCouriersTable();
+
+renderPaths();
+renderPoints();
+renderPareto();
+selectPoint(0);
+</script>
+</body>
+</html>
